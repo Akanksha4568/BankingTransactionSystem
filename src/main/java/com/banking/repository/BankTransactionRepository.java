@@ -79,4 +79,36 @@ public class BankTransactionRepository {
 
         return transactions.stream().findFirst();
     }
+
+
+    //save customer transaction details
+    public Long save(BankTransaction transaction) {
+
+        String sql = "INSERT INTO bank_transaction " +
+                "(idempotency_key, from_account_id, to_account_id, " +
+                "transaction_type, amount, status, description) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                "RETURNING transaction_id";
+
+        return jdbcTemplate.queryForObject(
+                sql,
+                Long.class,
+                transaction.getIdempotencyKey(),
+                transaction.getFromAccountId(),
+                transaction.getToAccountId(),
+                transaction.getTransactionType(),
+                transaction.getAmount(),
+                transaction.getStatus(),
+                transaction.getDescription()
+        );
+    }
+
+    public int updateStatus(Long transactionId, String status) {
+
+        String sql = "UPDATE bank_transaction " +
+                "SET status = ? " +
+                "WHERE transaction_id = ?";
+
+        return jdbcTemplate.update(sql, status, transactionId);
+    }
 }

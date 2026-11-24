@@ -57,4 +57,17 @@ public class FailedTransactionRepository {
                 transactionId
         );
     }
+
+    public int save(FailedTransaction failedTransaction) {
+
+        String sql = "INSERT INTO failed_transaction " +
+                "(transaction_id, failure_reason) " +
+                "VALUES (?, ?)";
+
+        return jdbcTemplate.update(
+                sql,
+                failedTransaction.getTransactionId(),
+                failedTransaction.getFailureReason()
+        );
+    }
 }

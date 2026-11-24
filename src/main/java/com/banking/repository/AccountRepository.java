@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;  //Converts database rows into Java Account objects
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;  //	Handles cases where an account is not found
 
@@ -58,5 +59,23 @@ public class AccountRepository {
         );
 
         return accounts.stream().findFirst();
+    }
+
+    public int creditAccountBalance(Long accountId, BigDecimal amount) {
+        String sql = "UPDATE account " +
+                "SET balance = balance + ? " +
+                "WHERE account_id = ? AND status = 'ACTIVE'";
+
+        return jdbcTemplate.update(sql, amount, accountId);
+    }
+
+    public int debitAccountBalance(Long accountId, BigDecimal amount) {
+        String sql = "UPDATE account " +
+                "SET balance = balance - ? " +
+                "WHERE account_id = ? " +
+                "AND status = 'ACTIVE' " +
+                "AND balance >= ?";    //ensures that the account balance never becomes negative, even if multiple withdrawals happen simultaneously
+
+        return jdbcTemplate.update(sql, amount, accountId, amount);
     }
 }

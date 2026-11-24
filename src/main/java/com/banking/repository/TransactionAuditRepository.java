@@ -46,4 +46,19 @@ public class TransactionAuditRepository {
                 transactionId
         );
     }
+
+    public int save(TransactionAudit audit) {
+
+        String sql = "INSERT INTO transaction_audit " +
+                "(transaction_id, actor_user_id, action, details) " +
+                "VALUES (?, ?, ?, ?)";
+
+        return jdbcTemplate.update(
+                sql,
+                audit.getTransactionId(),
+                audit.getActorUserId(),
+                audit.getAction(),
+                audit.getDetails()
+        );
+    }
 }
