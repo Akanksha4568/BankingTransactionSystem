@@ -48,6 +48,15 @@ public class AccountRepository {
         return accounts.stream().findFirst();
     }
 
+    public Optional<Account> findByIdForUpdate(Long accountId) {
+        String sql = "SELECT * FROM account WHERE account_id = ? FOR UPDATE";
+
+        List<Account> accounts =
+                jdbcTemplate.query(sql, accountRowMapper, accountId);
+
+        return accounts.stream().findFirst();
+    }
+
     public Optional<Account> findByAccountNumber(String accountNumber) {
 
         String sql = "SELECT * FROM account WHERE account_number = ?";
