@@ -103,6 +103,32 @@ public class BankTransactionRepository {
         );
     }
 
+
+    public Optional<Long> saveIfAbsent(BankTransaction transaction) {
+
+        String sql = "INSERT INTO bank_transaction " +
+                "(idempotency_key, from_account_id, to_account_id, " +
+                "transaction_type, amount, status, description) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                "ON CONFLICT (idempotency_key) DO NOTHING " +
+                "RETURNING transaction_id";
+
+        List<Long> transactionIds = jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> rs.getLong("transaction_id"),
+                transaction.getIdempotencyKey(),
+                transaction.getFromAccountId(),
+                transaction.getToAccountId(),
+                transaction.getTransactionType(),
+                transaction.getAmount(),
+                transaction.getStatus(),
+                transaction.getDescription()
+        );
+
+        return transactionIds.stream().findFirst();
+    }
+
+
     public int updateStatus(Long transactionId, String status) {
 
         String sql = "UPDATE bank_transaction " +

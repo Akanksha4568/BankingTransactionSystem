@@ -77,7 +77,34 @@ public class WithdrawalService {
         transaction.setStatus("PENDING");
         transaction.setDescription("Account withdrawal");
 
-        Long transactionId = transactionRepository.save(transaction);
+        Optional<Long> savedTransactionId =
+                transactionRepository.saveIfAbsent(transaction);
+
+        if (!savedTransactionId.isPresent()) {
+
+            BankTransaction existing =
+                    transactionRepository.findByIdempotencyKey(idempotencyKey)
+                            .orElseThrow(() ->
+                                    new IllegalStateException(
+                                            "Transaction already exists but could not be retrieved."
+                                    )
+                            );
+
+            boolean sameRequest =
+                    "WITHDRAWAL".equals(existing.getTransactionType())
+                            && accountId.equals(existing.getFromAccountId())
+                            && amount.compareTo(existing.getAmount()) == 0;
+
+            if (!sameRequest) {
+                throw new IllegalArgumentException(
+                        "Idempotency key has already been used for another transaction."
+                );
+            }
+
+            return existing;
+        }
+
+        Long transactionId = savedTransactionId.get();
 
         int updatedRows =
                 accountRepository.debitAccountBalance(accountId, amount);

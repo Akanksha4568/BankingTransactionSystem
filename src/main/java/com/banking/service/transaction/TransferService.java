@@ -123,7 +123,35 @@ public class TransferService {
         transaction.setStatus("PENDING");
         transaction.setDescription("Account-to-account transfer");
 
-        Long transactionId = transactionRepository.save(transaction);
+        Optional<Long> savedTransactionId =
+                transactionRepository.saveIfAbsent(transaction);
+
+        if (!savedTransactionId.isPresent()) {
+
+            BankTransaction existing =
+                    transactionRepository.findByIdempotencyKey(idempotencyKey)
+                            .orElseThrow(() ->
+                                    new IllegalStateException(
+                                            "Transaction already exists but could not be retrieved."
+                                    )
+                            );
+
+            boolean sameRequest =
+                    "TRANSFER".equals(existing.getTransactionType())
+                            && fromAccountId.equals(existing.getFromAccountId())
+                            && toAccountId.equals(existing.getToAccountId())
+                            && amount.compareTo(existing.getAmount()) == 0;
+
+            if (!sameRequest) {
+                throw new IllegalArgumentException(
+                        "Idempotency key has already been used for another transaction."
+                );
+            }
+
+            return existing;
+        }
+
+        Long transactionId = savedTransactionId.get();
 
         // Step 10: Debit the sender's account
         int debitRows =

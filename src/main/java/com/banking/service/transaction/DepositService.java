@@ -88,7 +88,34 @@ public class DepositService {
         transaction.setStatus("PENDING");
         transaction.setDescription("Account deposit");
 
-        Long transactionId = transactionRepository.save(transaction);
+        Optional<Long> savedTransactionId =
+                transactionRepository.saveIfAbsent(transaction);
+
+        if (!savedTransactionId.isPresent()) {
+
+            BankTransaction existing =
+                    transactionRepository.findByIdempotencyKey(idempotencyKey)
+                            .orElseThrow(() ->
+                                    new IllegalStateException(
+                                            "Transaction already exists but could not be retrieved."
+                                    )
+                            );
+
+            boolean sameRequest =
+                    "DEPOSIT".equals(existing.getTransactionType())
+                            && accountId.equals(existing.getToAccountId())
+                            && amount.compareTo(existing.getAmount()) == 0;
+
+            if (!sameRequest) {
+                throw new IllegalArgumentException(
+                        "Idempotency key has already been used for another transaction."
+                );
+            }
+
+            return existing;
+        }
+
+        Long transactionId = savedTransactionId.get();
 
         // Increase the account balance.
         int updatedRows =

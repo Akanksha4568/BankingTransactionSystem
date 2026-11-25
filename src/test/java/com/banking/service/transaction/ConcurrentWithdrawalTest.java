@@ -140,4 +140,73 @@ class ConcurrentWithdrawalTest {
             executor.shutdownNow();
         }
     }
+
+
+    @Test
+    void shouldProcessSameIdempotencyKeyOnlyOnceDuringConcurrentWithdrawals()
+            throws Exception {
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch startSignal = new CountDownLatch(1);
+
+        String idempotencyKey = "SAME-KEY-" + testAccountId;
+        BigDecimal withdrawalAmount = new BigDecimal("1000.00");
+
+        try {
+            Future<Boolean> withdrawalOne = executor.submit(() -> {
+                startSignal.await();
+
+                try {
+                    withdrawalService.withdraw(
+                            testAccountId,
+                            withdrawalAmount,
+                            idempotencyKey,
+                            1L
+                    );
+                    return true;
+                } catch (RuntimeException exception) {
+                    return false;
+                }
+            });
+
+            Future<Boolean> withdrawalTwo = executor.submit(() -> {
+                startSignal.await();
+
+                try {
+                    withdrawalService.withdraw(
+                            testAccountId,
+                            withdrawalAmount,
+                            idempotencyKey,
+                            1L
+                    );
+                    return true;
+                } catch (RuntimeException exception) {
+                    return false;
+                }
+            });
+
+            startSignal.countDown();
+
+            assertTrue(withdrawalOne.get());
+            assertTrue(withdrawalTwo.get());
+
+            BigDecimal finalBalance = jdbcTemplate.queryForObject(
+                    "SELECT balance FROM account WHERE account_id = ?",
+                    BigDecimal.class,
+                    testAccountId
+            );
+
+            Integer transactionCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM bank_transaction WHERE idempotency_key = ?",
+                    Integer.class,
+                    idempotencyKey
+            );
+
+            assertEquals(1, transactionCount);
+            assertEquals(0, finalBalance.compareTo(new BigDecimal("9000.00")));
+
+        } finally {
+            executor.shutdownNow();
+        }
+    }
 }
