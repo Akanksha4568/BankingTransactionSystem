@@ -101,7 +101,12 @@ public class DepositService {
         }
 
         // Mark the transaction as successful.
-        transactionRepository.updateStatus(transactionId, "SUCCESS");
+        int statusUpdated = transactionRepository.updateStatus(transactionId, "SUCCESS");
+
+        if (statusUpdated != 1) {
+            throw new IllegalStateException(
+                    "Deposit failed. Transaction status could not be updated.");
+        }
 
         // Record the audit entry.
         TransactionAudit audit = new TransactionAudit();

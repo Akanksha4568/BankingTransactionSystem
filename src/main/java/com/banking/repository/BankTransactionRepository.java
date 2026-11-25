@@ -107,7 +107,8 @@ public class BankTransactionRepository {
 
         String sql = "UPDATE bank_transaction " +
                 "SET status = ? " +
-                "WHERE transaction_id = ?";
+                "WHERE transaction_id = ? " +
+                "AND status = 'PENDING'";
 
         return jdbcTemplate.update(sql, status, transactionId);
     }
