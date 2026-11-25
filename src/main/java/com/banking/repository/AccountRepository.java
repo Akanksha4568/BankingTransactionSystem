@@ -87,4 +87,21 @@ public class AccountRepository {
 
         return jdbcTemplate.update(sql, amount, accountId, amount);
     }
+
+    public boolean belongsToCustomer(Long accountId, Long customerId) {
+
+        String sql = "SELECT EXISTS (" +
+                "SELECT 1 FROM account " +
+                "WHERE account_id = ? AND customer_id = ?" +
+                ")";
+
+        Boolean exists = jdbcTemplate.queryForObject(
+                sql,
+                Boolean.class,
+                accountId,
+                customerId
+        );
+
+        return Boolean.TRUE.equals(exists);
+    }
 }

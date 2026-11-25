@@ -1,3 +1,4 @@
+
 package com.banking.repository;
 
 import com.banking.model.BankTransaction;
@@ -5,6 +6,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,12 +58,10 @@ public class BankTransactionRepository {
 
     public Optional<BankTransaction> findById(Long transactionId) {
 
-        String sql = " SELECT * FROM bank_transaction WHERE transaction_id = ?";
+        String sql = "SELECT * FROM bank_transaction WHERE transaction_id = ?";
 
         List<BankTransaction> transactions = jdbcTemplate.query(
-                sql,
-                transactionRowMapper,
-                transactionId
+                sql, transactionRowMapper, transactionId
         );
 
         return transactions.stream().findFirst();
@@ -72,16 +73,12 @@ public class BankTransactionRepository {
         String sql = "SELECT * FROM bank_transaction WHERE idempotency_key = ?";
 
         List<BankTransaction> transactions = jdbcTemplate.query(
-                sql,
-                transactionRowMapper,
-                idempotencyKey
+                sql, transactionRowMapper, idempotencyKey
         );
 
         return transactions.stream().findFirst();
     }
 
-
-    //save customer transaction details
     public Long save(BankTransaction transaction) {
 
         String sql = "INSERT INTO bank_transaction " +
@@ -102,7 +99,6 @@ public class BankTransactionRepository {
                 transaction.getDescription()
         );
     }
-
 
     public Optional<Long> saveIfAbsent(BankTransaction transaction) {
 
@@ -128,7 +124,6 @@ public class BankTransactionRepository {
         return transactionIds.stream().findFirst();
     }
 
-
     public int updateStatus(Long transactionId, String status) {
 
         String sql = "UPDATE bank_transaction " +
@@ -137,5 +132,81 @@ public class BankTransactionRepository {
                 "AND status = 'PENDING'";
 
         return jdbcTemplate.update(sql, status, transactionId);
+    }
+
+    // Fetch incoming and outgoing transactions for an account
+    public List<BankTransaction> findTransactionsByAccountId(
+            Long accountId,
+            int limit,
+            int offset,
+            String transactionType,
+            String status) {
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT * FROM bank_transaction " +
+                        "WHERE (from_account_id = ? OR to_account_id = ?)"
+        );
+
+        List<Object> parameters = new ArrayList<>();
+
+        parameters.add(accountId);
+        parameters.add(accountId);
+
+        if (transactionType != null && !transactionType.trim().isEmpty()) {
+            sql.append(" AND transaction_type = ?");
+            parameters.add(transactionType);
+        }
+
+        if (status != null && !status.trim().isEmpty()) {
+            sql.append(" AND status = ?");
+            parameters.add(status);
+        }
+
+        sql.append(" ORDER BY created_at DESC, transaction_id DESC");
+        sql.append(" LIMIT ? OFFSET ?");
+
+        parameters.add(limit);
+        parameters.add(offset);
+
+        return jdbcTemplate.query(
+                sql.toString(),
+                transactionRowMapper,
+                parameters.toArray()
+        );
+    }
+
+    // Count matching transactions for pagination
+    public int countTransactionsByAccountId(
+            Long accountId,
+            String transactionType,
+            String status) {
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM bank_transaction " +
+                        "WHERE (from_account_id = ? OR to_account_id = ?)"
+        );
+
+        List<Object> parameters = new ArrayList<>();
+
+        parameters.add(accountId);
+        parameters.add(accountId);
+
+        if (transactionType != null && !transactionType.trim().isEmpty()) {
+            sql.append(" AND transaction_type = ?");
+            parameters.add(transactionType);
+        }
+
+        if (status != null && !status.trim().isEmpty()) {
+            sql.append(" AND status = ?");
+            parameters.add(status);
+        }
+
+        Integer count = jdbcTemplate.queryForObject(
+                sql.toString(),
+                Integer.class,
+                parameters.toArray()
+        );
+
+        return count != null ? count : 0;
     }
 }
