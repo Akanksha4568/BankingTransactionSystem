@@ -60,4 +60,36 @@ public class AppUserRepository {
 
         return users.stream().findFirst();
     }
+
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM app_user WHERE username = ?)";
+        return Boolean.TRUE.equals(
+                jdbcTemplate.queryForObject(sql, Boolean.class, username)
+        );
+    }
+
+    public boolean existsByEmail(String email) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM app_user WHERE email = ?)";
+        return Boolean.TRUE.equals(
+                jdbcTemplate.queryForObject(sql, Boolean.class, email)
+        );
+    }
+
+    public Long save(AppUser user) {
+
+        String sql = "INSERT INTO app_user " +
+                "(username, email, password_hash, role, is_active) " +
+                "VALUES (?, ?, ?, ?, ?) " +
+                "RETURNING user_id";
+
+        return jdbcTemplate.queryForObject(
+                sql,
+                Long.class,
+                user.getUsername(),
+                user.getEmail(),
+                user.getPasswordHash(),
+                user.getRole(),
+                user.isActive()
+        );
+    }
 }

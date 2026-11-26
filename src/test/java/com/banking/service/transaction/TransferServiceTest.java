@@ -51,7 +51,7 @@ class TransferServiceTest {
                 1L,
                 receiverAccountId,
                 new BigDecimal("1000.00"),
-                "TRANSFER-TEST-001",
+                "TRANSFER-TEST-" + System.nanoTime(),
                 1L
         );
 
