@@ -70,6 +70,26 @@ public class AccountRepository {
         return accounts.stream().findFirst();
     }
 
+    public Account save(Account account) {
+
+        String sql = "INSERT INTO account (customer_id, account_number, account_type, balance, currency, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING account_id";
+
+        Long accountId = jdbcTemplate.queryForObject(
+                sql,
+                Long.class,
+                account.getCustomerId(),
+                account.getAccountNumber(),
+                account.getAccountType(),
+                account.getBalance(),
+                account.getCurrency(),
+                account.getStatus()
+        );
+
+        account.setAccountId(accountId);
+
+        return account;
+    }
+
     public int creditAccountBalance(Long accountId, BigDecimal amount) {
         String sql = "UPDATE account " +
                 "SET balance = balance + ? " +

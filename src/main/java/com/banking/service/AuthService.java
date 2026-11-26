@@ -7,21 +7,43 @@ import org.springframework.stereotype.Service;
 import com.banking.model.AppUser;
 import com.banking.model.LoginResponse;
 import java.util.Optional;
+import com.banking.model.Customer;
+import com.banking.repository.CustomerRepository;
+import org.springframework.transaction.annotation.Transactional;
+import com.banking.repository.AccountRepository;
+import com.banking.model.Account;
 
 @Service
 public class AuthService {
 
     private final AppUserRepository appUserRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final CustomerRepository customerRepository;
+    private final AccountRepository accountRepository;
 
-    public AuthService(AppUserRepository appUserRepository) {
+    public AuthService(
+            AppUserRepository appUserRepository,
+            CustomerRepository customerRepository,
+            AccountRepository accountRepository,
+            JwtService jwtService) {
+
         this.appUserRepository = appUserRepository;
+        this.customerRepository = customerRepository;
+        this.accountRepository = accountRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.jwtService = jwtService;
     }
 
-    public Long register(String username, String email, String password) {
+    @Transactional
+    public Long register(
+            String username,
+            String email,
+            String password,
+            String fullName,
+            String phone,
+            String address) {
 
-        // 1. Validate empty fields
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username is required.");
         }
@@ -34,25 +56,33 @@ public class AuthService {
             throw new IllegalArgumentException("Password is required.");
         }
 
-        // 2. Check password length
+        if (fullName == null || fullName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Full name is required.");
+        }
+
+        if (phone == null || phone.trim().isEmpty()) {
+            throw new IllegalArgumentException("Phone number is required.");
+        }
+
+        if (address == null || address.trim().isEmpty()) {
+            throw new IllegalArgumentException("Address is required.");
+        }
+
         if (password.length() < 8) {
             throw new IllegalArgumentException(
                     "Password must contain at least 8 characters."
             );
         }
 
-        // 3. Check duplicate username
         if (appUserRepository.existsByUsername(username.trim())) {
             throw new IllegalArgumentException("Username already exists.");
         }
 
-        // 4. Check duplicate email
         if (appUserRepository.existsByEmail(email.trim())) {
             throw new IllegalArgumentException("Email already exists.");
         }
 
-        // 5. Create user object
-        com.banking.model.AppUser user = new com.banking.model.AppUser();
+        AppUser user = new AppUser();
 
         user.setUsername(username.trim());
         user.setEmail(email.trim());
@@ -60,8 +90,29 @@ public class AuthService {
         user.setRole("USER");
         user.setActive(true);
 
-        // 6. Save user and return generated ID
-        return appUserRepository.save(user);
+        Long userId = appUserRepository.save(user);
+
+        Customer customer = new Customer();
+
+        customer.setUserId(userId);
+        customer.setFullName(fullName.trim());
+        customer.setPhone(phone.trim());
+        customer.setAddress(address.trim());
+
+        Customer savedCustomer = customerRepository.save(customer);
+
+        Account account = new Account();
+
+        account.setCustomerId(savedCustomer.getCustomerId());
+        account.setAccountNumber("BANK" + System.currentTimeMillis());
+        account.setAccountType("SAVINGS");
+        account.setBalance(new java.math.BigDecimal("0.00"));
+        account.setCurrency("INR");
+        account.setStatus("ACTIVE");
+
+        accountRepository.save(account);
+
+        return userId;
     }
 
 
@@ -97,11 +148,12 @@ public class AuthService {
         }
 
         // 5. Return login response
+        String token = jwtService.generateToken(user);
         return new LoginResponse(
                 user.getUserId(),
                 user.getUsername(),
                 user.getRole(),
-                null
+                token
         );
     }
 

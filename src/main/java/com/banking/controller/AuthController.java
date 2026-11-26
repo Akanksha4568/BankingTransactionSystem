@@ -1,9 +1,11 @@
+
 package com.banking.controller;
 
 import com.banking.model.RegistrationRequest;
 import com.banking.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
 import com.banking.model.LoginRequest;
 import com.banking.model.LoginResponse;
 
@@ -23,7 +25,10 @@ public class AuthController {
         Long userId = authService.register(
                 request.getUsername(),
                 request.getEmail(),
-                request.getPassword()
+                request.getPassword(),
+                request.getFullName(),
+                request.getPhone(),
+                request.getAddress()
         );
 
         return "Registration successful. User ID: " + userId;

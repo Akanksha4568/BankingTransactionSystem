@@ -59,4 +59,22 @@ public class CustomerRepository {
 
         return customers.stream().findFirst();
     }
+
+    public Customer save(Customer customer) {
+
+        String sql = "INSERT INTO customer (user_id, full_name, phone, address) VALUES (?, ?, ?, ?) RETURNING customer_id";
+
+        Long customerId = jdbcTemplate.queryForObject(
+                sql,
+                Long.class,
+                customer.getUserId(),
+                customer.getFullName(),
+                customer.getPhone(),
+                customer.getAddress()
+        );
+
+        customer.setCustomerId(customerId);
+
+        return customer;
+    }
 }

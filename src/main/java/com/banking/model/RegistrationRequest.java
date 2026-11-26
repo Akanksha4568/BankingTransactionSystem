@@ -1,14 +1,16 @@
+
 package com.banking.model;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class RegistrationRequest {
 
     @NotBlank(message = "Username is required.")
     @Size(min = 3, max = 30, message = "Username must be between 3 and 30 characters.")
-    @jakarta.validation.constraints.Pattern(
+    @Pattern(
             regexp = "^[a-zA-Z0-9_]+$",
             message = "Username can contain only letters, numbers, and underscores."
     )
@@ -21,6 +23,20 @@ public class RegistrationRequest {
     @NotBlank(message = "Password is required.")
     @Size(min = 8, message = "Password must contain at least 8 characters.")
     private String password;
+
+    @NotBlank(message = "Full name is required.")
+    @Size(max = 100, message = "Full name cannot exceed 100 characters.")
+    private String fullName;
+
+    @NotBlank(message = "Phone number is required.")
+    @Pattern(
+            regexp = "^\\+?[0-9]{7,15}$",
+            message = "Please enter a valid phone number."
+    )
+    private String phone;
+
+    @NotBlank(message = "Address is required.")
+    private String address;
 
     public RegistrationRequest() {
     }
@@ -47,5 +63,29 @@ public class RegistrationRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 }
