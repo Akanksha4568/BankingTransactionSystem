@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.junit.jupiter.api.BeforeEach;
 
 @SpringBootTest
 @Transactional
@@ -26,6 +27,15 @@ class DepositServiceTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void setUp() {
+        jdbcTemplate.update(
+                "UPDATE account SET balance = ?, status = 'ACTIVE' WHERE account_id = ?",
+                new BigDecimal("10000.00"),
+                1L
+        );
+    }
 
     @Test
     void shouldDepositAmountSuccessfully() {

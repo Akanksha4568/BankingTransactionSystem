@@ -13,9 +13,11 @@ import com.banking.service.transaction.DepositExecutionService;
 import com.banking.model.DepositRequest;
 import com.banking.model.BankTransaction;
 import com.banking.model.TransactionHistoryResponse;
+import com.banking.model.WithdrawalRequest;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.banking.service.transaction.WithdrawalExecutionService;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -23,13 +25,16 @@ public class TransactionHistoryController {
 
     private final TransactionHistoryService transactionHistoryService;
     private final DepositExecutionService depositExecutionService;
+    private final WithdrawalExecutionService withdrawalExecutionService;
 
     public TransactionHistoryController(
             TransactionHistoryService transactionHistoryService,
-            DepositExecutionService depositExecutionService) {
+            DepositExecutionService depositExecutionService,
+            WithdrawalExecutionService withdrawalExecutionService) {
 
         this.transactionHistoryService = transactionHistoryService;
         this.depositExecutionService = depositExecutionService;
+        this.withdrawalExecutionService = withdrawalExecutionService;
     }
 
     @GetMapping("/history")
@@ -78,6 +83,38 @@ public class TransactionHistoryController {
                 );
 
         // Return a safe response without exposing the idempotency key
+        return new TransactionHistoryResponse(
+                transaction.getTransactionId(),
+                transaction.getFromAccountId(),
+                transaction.getToAccountId(),
+                transaction.getTransactionType(),
+                transaction.getAmount(),
+                transaction.getStatus(),
+                transaction.getDescription(),
+                transaction.getCreatedAt()
+        );
+    }
+
+    @PostMapping("/withdraw")
+    public TransactionHistoryResponse withdraw(
+            @RequestBody WithdrawalRequest request) {
+
+        // Validate account ownership
+        transactionHistoryService.validateAccountOwnership(
+                request.getUserId(),
+                request.getAccountId()
+        );
+
+        // Execute withdrawal
+        BankTransaction transaction =
+                withdrawalExecutionService.executeWithdrawal(
+                        request.getAccountId(),
+                        request.getAmount(),
+                        request.getIdempotencyKey(),
+                        request.getUserId()
+                );
+
+        // Return a safe response
         return new TransactionHistoryResponse(
                 transaction.getTransactionId(),
                 transaction.getFromAccountId(),

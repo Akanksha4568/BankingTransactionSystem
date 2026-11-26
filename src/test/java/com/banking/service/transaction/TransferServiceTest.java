@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
 
 @SpringBootTest
 @Transactional
@@ -24,6 +25,15 @@ class TransferServiceTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void setUp() {
+        jdbcTemplate.update(
+                "UPDATE account SET balance = ?, status = 'ACTIVE', currency = 'INR' WHERE account_id = ?",
+                new BigDecimal("10000.00"),
+                1L
+        );
+    }
 
     @Test
     void shouldTransferMoneySuccessfully() {
