@@ -14,10 +14,12 @@ import com.banking.model.DepositRequest;
 import com.banking.model.BankTransaction;
 import com.banking.model.TransactionHistoryResponse;
 import com.banking.model.WithdrawalRequest;
+import com.banking.model.TransferRequest;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import com.banking.service.transaction.WithdrawalExecutionService;
+import com.banking.service.transaction.TransferExecutionService;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -26,15 +28,18 @@ public class TransactionHistoryController {
     private final TransactionHistoryService transactionHistoryService;
     private final DepositExecutionService depositExecutionService;
     private final WithdrawalExecutionService withdrawalExecutionService;
+    private final TransferExecutionService transferExecutionService;
 
     public TransactionHistoryController(
             TransactionHistoryService transactionHistoryService,
             DepositExecutionService depositExecutionService,
-            WithdrawalExecutionService withdrawalExecutionService) {
+            WithdrawalExecutionService withdrawalExecutionService,
+            TransferExecutionService transferExecutionService) {
 
         this.transactionHistoryService = transactionHistoryService;
         this.depositExecutionService = depositExecutionService;
         this.withdrawalExecutionService = withdrawalExecutionService;
+        this.transferExecutionService = transferExecutionService;
     }
 
     @GetMapping("/history")
@@ -126,4 +131,35 @@ public class TransactionHistoryController {
                 transaction.getCreatedAt()
         );
     }
+
+    @PostMapping("/transfer")
+    public TransactionHistoryResponse transfer(
+            @RequestBody TransferRequest request) {
+
+        transactionHistoryService.validateAccountOwnership(
+                request.getUserId(),
+                request.getFromAccountId()
+        );
+
+        BankTransaction transaction =
+                transferExecutionService.executeTransfer(
+                        request.getFromAccountId(),
+                        request.getToAccountId(),
+                        request.getAmount(),
+                        request.getIdempotencyKey(),
+                        request.getUserId()
+                );
+
+        return new TransactionHistoryResponse(
+                transaction.getTransactionId(),
+                transaction.getFromAccountId(),
+                transaction.getToAccountId(),
+                transaction.getTransactionType(),
+                transaction.getAmount(),
+                transaction.getStatus(),
+                transaction.getDescription(),
+                transaction.getCreatedAt()
+        );
+    }
+
 }
