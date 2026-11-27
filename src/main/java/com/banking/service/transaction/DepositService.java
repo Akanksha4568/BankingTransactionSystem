@@ -40,22 +40,28 @@ public class DepositService {
             String idempotencyKey,
             Long actorUserId) {
 
+        // Step 1: Validate idempotency key
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
             throw new IllegalArgumentException(
                     "Idempotency key is required."
             );
         }
 
+        // Step 2: Validate amount
         transactionValidator.validateAmount(amount);
 
-        Account account = accountRepository.findById(accountId)
+        // Step 3: Lock the account row
+        Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Account does not exist.")
+                        new IllegalArgumentException(
+                                "Account does not exist."
+                        )
                 );
 
+        // Step 4: Validate account status
         transactionValidator.validateAccount(account);
 
-        // Check whether this request was already processed.
+        // Step 5: Check idempotency key
         Optional<BankTransaction> existingTransaction =
                 transactionRepository.findByIdempotencyKey(idempotencyKey);
 
@@ -77,7 +83,7 @@ public class DepositService {
             return existing;
         }
 
-        // Create a pending transaction record.
+        // Step 6: Create pending transaction
         BankTransaction transaction = new BankTransaction();
 
         transaction.setIdempotencyKey(idempotencyKey);
@@ -88,6 +94,7 @@ public class DepositService {
         transaction.setStatus("PENDING");
         transaction.setDescription("Account deposit");
 
+        // Step 7: Save transaction if key is unused
         Optional<Long> savedTransactionId =
                 transactionRepository.saveIfAbsent(transaction);
 
@@ -117,7 +124,7 @@ public class DepositService {
 
         Long transactionId = savedTransactionId.get();
 
-        // Increase the account balance.
+        // Step 8: Credit account balance
         int updatedRows =
                 accountRepository.creditAccountBalance(accountId, amount);
 
@@ -127,27 +134,36 @@ public class DepositService {
             );
         }
 
-        // Mark the transaction as successful.
-        int statusUpdated = transactionRepository.updateStatus(transactionId, "SUCCESS");
+        // Step 9: Update transaction status
+        int statusUpdated =
+                transactionRepository.updateStatus(
+                        transactionId, "SUCCESS"
+                );
 
         if (statusUpdated != 1) {
             throw new IllegalStateException(
-                    "Deposit failed. Transaction status could not be updated.");
+                    "Deposit failed. Transaction status could not be updated."
+            );
         }
 
-        // Record the audit entry.
+        // Step 10: Save audit record
         TransactionAudit audit = new TransactionAudit();
 
         audit.setTransactionId(transactionId);
         audit.setActorUserId(actorUserId);
         audit.setAction("DEPOSIT_SUCCESS");
-        audit.setDetails("Deposit of " + amount + " completed successfully.");
+        audit.setDetails(
+                "Deposit of " + amount + " completed successfully."
+        );
 
         auditRepository.save(audit);
 
+        // Step 11: Return completed transaction
         return transactionRepository.findById(transactionId)
                 .orElseThrow(() ->
-                        new IllegalStateException("Transaction record not found.")
+                        new IllegalStateException(
+                                "Transaction record not found."
+                        )
                 );
     }
 }

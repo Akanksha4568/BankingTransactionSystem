@@ -124,4 +124,17 @@ public class AccountRepository {
 
         return Boolean.TRUE.equals(exists);
     }
+
+
+    public List<Account> findAllByCustomerId(Long customerId) {
+
+        String sql = "SELECT * FROM account WHERE customer_id = ? ORDER BY account_id";
+
+        return jdbcTemplate.query(
+                sql,
+                accountRowMapper,
+                customerId
+        );
+    }
+
 }

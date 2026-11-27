@@ -10,8 +10,6 @@ import java.util.Optional;
 import com.banking.model.Customer;
 import com.banking.repository.CustomerRepository;
 import org.springframework.transaction.annotation.Transactional;
-import com.banking.repository.AccountRepository;
-import com.banking.model.Account;
 
 @Service
 public class AuthService {
@@ -20,17 +18,14 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CustomerRepository customerRepository;
-    private final AccountRepository accountRepository;
 
     public AuthService(
             AppUserRepository appUserRepository,
             CustomerRepository customerRepository,
-            AccountRepository accountRepository,
             JwtService jwtService) {
 
         this.appUserRepository = appUserRepository;
         this.customerRepository = customerRepository;
-        this.accountRepository = accountRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
         this.jwtService = jwtService;
     }
@@ -99,18 +94,7 @@ public class AuthService {
         customer.setPhone(phone.trim());
         customer.setAddress(address.trim());
 
-        Customer savedCustomer = customerRepository.save(customer);
-
-        Account account = new Account();
-
-        account.setCustomerId(savedCustomer.getCustomerId());
-        account.setAccountNumber("BANK" + System.currentTimeMillis());
-        account.setAccountType("SAVINGS");
-        account.setBalance(new java.math.BigDecimal("0.00"));
-        account.setCurrency("INR");
-        account.setStatus("ACTIVE");
-
-        accountRepository.save(account);
+        customerRepository.save(customer);
 
         return userId;
     }
