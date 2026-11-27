@@ -21,10 +21,12 @@ public class WithdrawalService {
     private final TransactionAuditRepository auditRepository;
     private final TransactionValidator transactionValidator;
 
-    public WithdrawalService(AccountRepository accountRepository,
-                             BankTransactionRepository transactionRepository,
-                             TransactionAuditRepository auditRepository,
-                             TransactionValidator transactionValidator) {
+    public WithdrawalService(
+            AccountRepository accountRepository,
+            BankTransactionRepository transactionRepository,
+            TransactionAuditRepository auditRepository,
+            TransactionValidator transactionValidator) {
+
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.auditRepository = auditRepository;
@@ -32,25 +34,39 @@ public class WithdrawalService {
     }
 
     @Transactional
-    public BankTransaction withdraw(Long accountId, BigDecimal amount,
-                                    String idempotencyKey, Long actorUserId) {
+    public BankTransaction withdraw(
+            Long accountId,
+            BigDecimal amount,
+            String idempotencyKey,
+            Long actorUserId) {
 
+        // Step 1: Validate idempotency key
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("Idempotency key is required.");
+            throw new IllegalArgumentException(
+                    "Idempotency key is required."
+            );
         }
 
+        // Step 2: Validate withdrawal amount
         transactionValidator.validateAmount(amount);
 
-        Account account = accountRepository.findById(accountId)
+        // Step 3: Lock the account row
+        Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Account does not exist."));
+                        new IllegalArgumentException(
+                                "Account does not exist."
+                        )
+                );
 
+        // Step 4: Validate account status
         transactionValidator.validateAccount(account);
 
+        // Step 5: Check whether this request was already processed
         Optional<BankTransaction> existingTransaction =
                 transactionRepository.findByIdempotencyKey(idempotencyKey);
 
         if (existingTransaction.isPresent()) {
+
             BankTransaction existing = existingTransaction.get();
 
             boolean sameRequest =
@@ -60,15 +76,19 @@ public class WithdrawalService {
 
             if (!sameRequest) {
                 throw new IllegalArgumentException(
-                        "Idempotency key has already been used for another transaction.");
+                        "Idempotency key has already been used for another transaction."
+                );
             }
 
             return existing;
         }
 
+        // Step 6: Validate sufficient balance
         transactionValidator.validateSufficientBalance(account, amount);
 
+        // Step 7: Create pending transaction
         BankTransaction transaction = new BankTransaction();
+
         transaction.setIdempotencyKey(idempotencyKey);
         transaction.setFromAccountId(accountId);
         transaction.setToAccountId(null);
@@ -77,6 +97,7 @@ public class WithdrawalService {
         transaction.setStatus("PENDING");
         transaction.setDescription("Account withdrawal");
 
+        // Step 8: Save transaction only if idempotency key is unused
         Optional<Long> savedTransactionId =
                 transactionRepository.saveIfAbsent(transaction);
 
@@ -106,31 +127,46 @@ public class WithdrawalService {
 
         Long transactionId = savedTransactionId.get();
 
+        // Step 9: Debit account balance
         int updatedRows =
                 accountRepository.debitAccountBalance(accountId, amount);
 
         if (updatedRows != 1) {
             throw new IllegalStateException(
-                    "Withdrawal failed. Insufficient balance or inactive account.");
+                    "Withdrawal failed. Insufficient balance or inactive account."
+            );
         }
 
-        int statusUpdated = transactionRepository.updateStatus(transactionId, "SUCCESS");
+        // Step 10: Update transaction status
+        int statusUpdated =
+                transactionRepository.updateStatus(
+                        transactionId, "SUCCESS"
+                );
 
         if (statusUpdated != 1) {
             throw new IllegalStateException(
-                    "Withdrawal failed. Transaction status could not be updated.");
+                    "Withdrawal failed. Transaction status could not be updated."
+            );
         }
 
+        // Step 11: Save transaction audit
         TransactionAudit audit = new TransactionAudit();
+
         audit.setTransactionId(transactionId);
         audit.setActorUserId(actorUserId);
         audit.setAction("WITHDRAWAL_SUCCESS");
-        audit.setDetails("Withdrawal of " + amount + " completed successfully.");
+        audit.setDetails(
+                "Withdrawal of " + amount + " completed successfully."
+        );
 
         auditRepository.save(audit);
 
+        // Step 12: Return completed transaction
         return transactionRepository.findById(transactionId)
                 .orElseThrow(() ->
-                        new IllegalStateException("Transaction record not found."));
+                        new IllegalStateException(
+                                "Transaction record not found."
+                        )
+                );
     }
 }
