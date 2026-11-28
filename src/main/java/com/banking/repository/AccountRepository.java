@@ -137,4 +137,16 @@ public class AccountRepository {
         );
     }
 
+
+    public List<Account> findAllAccounts() {
+
+        String sql = "SELECT * FROM account ORDER BY account_id";
+
+        return jdbcTemplate.query(
+                sql,
+                accountRowMapper
+        );
+    }
+
+
 }

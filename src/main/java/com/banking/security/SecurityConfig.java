@@ -118,6 +118,11 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login"
                         ).permitAll()
+
+                        // Only ADMIN can access admin APIs
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // All other protected APIs require login
                         .anyRequest().authenticated()
                 )
 

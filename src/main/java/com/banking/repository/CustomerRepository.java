@@ -77,4 +77,15 @@ public class CustomerRepository {
 
         return customer;
     }
+
+    public List<Customer> findAllCustomers() {
+
+        String sql = "SELECT c.* FROM customer c INNER JOIN app_user u ON c.user_id = u.user_id WHERE u.role = 'USER' ORDER BY c.customer_id ";
+
+        return jdbcTemplate.query(
+                sql,
+                customerRowMapper
+        );
+    }
+
 }

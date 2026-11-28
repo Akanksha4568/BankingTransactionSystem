@@ -209,4 +209,15 @@ public class BankTransactionRepository {
 
         return count != null ? count : 0;
     }
+    // Fetch all transactions for admin monitoring
+    public List<BankTransaction> findAllTransactions() {
+
+        String sql = "SELECT * FROM bank_transaction " +
+                "ORDER BY created_at DESC, transaction_id DESC";
+
+        return jdbcTemplate.query(
+                sql,
+                transactionRowMapper
+        );
+    }
 }

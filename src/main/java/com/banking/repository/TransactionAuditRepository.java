@@ -61,4 +61,15 @@ public class TransactionAuditRepository {
                 audit.getDetails()
         );
     }
+    // Fetch all audit logs for admin monitoring
+    public List<TransactionAudit> findAll() {
+
+        String sql = "SELECT * FROM transaction_audit " +
+                "ORDER BY created_at DESC, audit_id DESC";
+
+        return jdbcTemplate.query(
+                sql,
+                auditRowMapper
+        );
+    }
 }

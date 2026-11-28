@@ -79,4 +79,13 @@ public class AccountService {
         return accountRepository.save(account);
     }
 
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAllAccounts();
+    }
+
+    public List<Customer> getAllCustomers() {
+        return customerRepository.findAllCustomers();
+    }
+
+
 }
